@@ -187,8 +187,9 @@ public class MainActivity extends Activity{
                             try {
                                 //ミリ秒→秒に変換
                                 Thread.sleep(Integer.parseInt(String.valueOf(editTextInterval.getText()))*1000);
+                                tv_state.setText(R.string.txt_waiting);
                             }catch(InterruptedException e){
-                                Log.d(myTAG,"Thread");
+                                Log.d(myTAG,"Sleep Error");
                             }
                         }
                     }
