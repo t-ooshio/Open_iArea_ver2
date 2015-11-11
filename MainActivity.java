@@ -50,7 +50,7 @@ public class MainActivity extends Activity{
     /**log出力用 File書き込み*/
     private FileWriter writer;
     /**ファイル名用日付フォーマット;*/
-    private SimpleDateFormat FILENAME_SDF = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ssm-SSS");
+    private SimpleDateFormat FILENAME_SDF = new SimpleDateFormat("yyyy-MM-dd-kk-mm-ssm-SSS");
     /**timer用*/
     private Timer timer;
     //繰り返し間隔(テキストボックスから秒で受け取り、1000倍してミリ病にして使う)
@@ -100,6 +100,7 @@ public class MainActivity extends Activity{
          * 制御用変数
          */
         //測位間隔
+        //未使用
         final int interval;
 
         /**
@@ -171,6 +172,7 @@ public class MainActivity extends Activity{
         button_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                isLoop=TRUE;
                 isPositioning=TRUE;
                 tv_state.setText(R.string.txt_Positioning);
                 show_Toast("測位開始");
@@ -187,7 +189,7 @@ public class MainActivity extends Activity{
                             try {
                                 //ミリ秒→秒に変換
                                 Thread.sleep(Integer.parseInt(String.valueOf(editTextInterval.getText()))*1000);
-                                tv_state.setText(R.string.txt_waiting);
+                                Log.d(myTAG,"待機中");
                             }catch(InterruptedException e){
                                 Log.d(myTAG,"Sleep Error");
                             }
@@ -219,7 +221,7 @@ public class MainActivity extends Activity{
      */
     private String getjTime(long t){
         String jtime;
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+        SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd kk:mm:ss");
         TimeZone timezone = TimeZone.getTimeZone("Asia/Tokyo");
         Locale locale = Locale.JAPAN;
         Calendar calendar = Calendar.getInstance(timezone, locale);
