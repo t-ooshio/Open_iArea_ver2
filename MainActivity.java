@@ -60,6 +60,11 @@ public class MainActivity extends Activity{
     //測位繰り返しフラグ(TRUE:繰り返し続行 FALSE:停止)
     private Boolean isLoop=TRUE;
 
+    //logファイル用
+    private FileOutputStream fos;
+    private OutputStreamWriter osw;
+    private BufferedWriter bw;
+
     private String file_tmp;
     private String LOGDIR;
     private String PkgName;
@@ -111,9 +116,9 @@ public class MainActivity extends Activity{
         newfile.getParentFile().mkdir();
         try{
             //ログ出力
-            FileOutputStream fos = new FileOutputStream(newfile, true);
-            OutputStreamWriter osw = new OutputStreamWriter(fos, "Shift-JIS");
-            BufferedWriter bw = new BufferedWriter(osw);
+            fos = new FileOutputStream(newfile, true);
+            osw = new OutputStreamWriter(fos, "Shift-JIS");
+            bw = new BufferedWriter(osw);
 
             bw.write("測位日時,緯度,経度\n");
             bw.flush();
@@ -145,9 +150,9 @@ public class MainActivity extends Activity{
                 }
                 try{
                     //ログ出力
-                    FileOutputStream fos = new FileOutputStream(newfile, true);
-                    OutputStreamWriter osw = new OutputStreamWriter(fos, "Shift-JIS");
-                    BufferedWriter bw = new BufferedWriter(osw);
+                    fos = new FileOutputStream(newfile, true);
+                    osw = new OutputStreamWriter(fos, "Shift-JIS");
+                    bw = new BufferedWriter(osw);
 
                     bw.write(String.valueOf(String.valueOf(getjTime(location[0].getTime())) + ","
                             + location[0].getLatitude()) + ","
@@ -198,6 +203,11 @@ public class MainActivity extends Activity{
                 tv_state.setText(R.string.txt_suspension);
                 show_Toast("測位終了");
                 isLoop=FALSE;
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
             }
         });
