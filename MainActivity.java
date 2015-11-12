@@ -50,7 +50,7 @@ public class MainActivity extends Activity{
     /**log出力用 File書き込み*/
     private FileWriter writer;
     /**ファイル名用日付フォーマット;*/
-    private SimpleDateFormat FILENAME_SDF = new SimpleDateFormat("yyyy-MM-dd-kk-mm-ssm-SSS");
+    private SimpleDateFormat FILENAME_SDF = new SimpleDateFormat("yyyyMMdd-kkmmssSSS");
     /**timer用*/
     private Timer timer;
     //繰り返し間隔(テキストボックスから秒で受け取り、1000倍してミリ病にして使う)
@@ -59,6 +59,8 @@ public class MainActivity extends Activity{
     private Boolean isPositioning= TRUE;
     //測位繰り返しフラグ(TRUE:繰り返し続行 FALSE:停止)
     private Boolean isLoop=TRUE;
+    //最初の測位かのフラグ(TRUE:最初の測位 FALSE:初回以外)
+    private Boolean isFirst;
 
     //logファイル用
     private FileOutputStream fos;
@@ -109,26 +111,6 @@ public class MainActivity extends Activity{
         final OpeniAreaHttpConnect mOpeniAreaHttpConnect = new OpeniAreaHttpConnect(this);
         final OpeniAreaLocation[] location = new OpeniAreaLocation[1];
 
-        /*log出力用初期処理*/
-        file_tmp = FILENAME_SDF.format(new Date());
-        PkgName = this.getPackageName();
-        LOGDIR = Environment.getExternalStorageDirectory().getPath();
-        newfile = new File("/sdcard/"+PkgName + "/" + file_tmp + ".txt");
-        newfile.getParentFile().mkdir();
-        try{
-            //ログ出力
-            fos = new FileOutputStream(newfile, true);
-            osw = new OutputStreamWriter(fos, "Shift-JIS");
-            bw = new BufferedWriter(osw);
-
-            bw.write("測位日時,緯度,経度\n");
-            bw.flush();
-            bw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
         /*
         handler
         threadから応答が来たら結果を表示する
@@ -160,6 +142,7 @@ public class MainActivity extends Activity{
                             + String.valueOf(location[0].getLongitude() + "\n"));
                     bw.flush();
                     bw.close();
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }            }
@@ -172,8 +155,10 @@ public class MainActivity extends Activity{
         button_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                initLog();
                 isLoop=TRUE;
                 isPositioning=TRUE;
+                isFirst=TRUE;
                 tv_state.setText(R.string.txt_Positioning);
                 show_Toast("測位開始");
                 //測位処理開始
@@ -181,18 +166,20 @@ public class MainActivity extends Activity{
                     @Override
                     public void run() {
                         while(isLoop) {
+                            if(!isFirst) {
+                                try {
+                                    Thread.sleep(Integer.parseInt(String.valueOf(editTextInterval.getText()))*1000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
                             mOpeniAreaHttpConnect.connection();
                             Message msg = new Message();
                             msg.what = 99;
                             msg.obj = mOpeniAreaHttpConnect.getLocation();
                             handler.sendMessage(msg);
-                            try {
-                                //ミリ秒→秒に変換
-                                Thread.sleep(Integer.parseInt(String.valueOf(editTextInterval.getText()))*1000);
-                                Log.d(myTAG,"待機中");
-                            }catch(InterruptedException e){
-                                Log.d(myTAG,"Sleep Error");
-                            }
+                            isFirst=FALSE;
+
                         }
                     }
                 }).start();
@@ -206,12 +193,19 @@ public class MainActivity extends Activity{
                 tv_state.setText(R.string.txt_suspension);
                 show_Toast("測位終了");
                 isLoop=FALSE;
-                try {
+                try{
+                    //ログ出力
+                    osw = new OutputStreamWriter(fos, "Shift-JIS");
+                    bw = new BufferedWriter(osw);
+
+                    bw.write(String.valueOf(String.valueOf(getjTime(location[0].getTime())) + ","
+                            + "正常終了" + "\n"));
+                    bw.flush();
+                    bw.close();
                     fos.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
             }
         });
     }
@@ -233,11 +227,58 @@ public class MainActivity extends Activity{
     }
 
     /**
+     * Logファイルの初期処理
+     */
+    private void initLog(){
+        /*log出力用初期処理*/
+        file_tmp = FILENAME_SDF.format(new Date());
+        PkgName = this.getPackageName();
+        LOGDIR = Environment.getExternalStorageDirectory().getPath();
+        newfile = new File("/sdcard/"+PkgName + "/" + file_tmp + ".txt");
+        newfile.getParentFile().mkdir();
+        try{
+            //ログ出力
+            fos = new FileOutputStream(newfile, true);
+            osw = new OutputStreamWriter(fos, "Shift-JIS");
+            bw = new BufferedWriter(osw);
+
+            bw.write("測位日時,緯度,経度\n");
+            bw.flush();
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     *ログへの追記処理
+     * 日付時間とメッセージを渡してログに書き込む
+     * 正常：時間,緯度,経度
+     * 異常:サーバからのエラーコード　エラーに応じたMessage
+     * これから作る
+     */
+    private void addLog(){
+
+    }
+    /**
     Toastの表示
      */
     private void show_Toast(String str){
-        Toast.makeText(this,str,Toast.LENGTH_LONG).show();
+        Toast.makeText(this, str, Toast.LENGTH_LONG).show();
     }
+
+    @Override
+    protected void onPause(){
+
+
+    }
+
+    @Override
+    protected void onStop(){
+
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
