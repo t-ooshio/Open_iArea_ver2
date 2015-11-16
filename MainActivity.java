@@ -9,11 +9,12 @@ package com.example.nttdocomo.open_iarea;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.location.LocationProvider;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,20 +24,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.w3c.dom.Text;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.Timer;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
@@ -60,6 +48,8 @@ public class MainActivity extends Activity{
     private Boolean isFirst;
 
     //logファイル用
+    private OpeniAreaLocation result_location = new OpeniAreaLocation("GPS");
+
     private MyLog myLog = new MyLog();
     //log出力時間用
     private Jtime jtime = new Jtime();
@@ -79,8 +69,10 @@ public class MainActivity extends Activity{
          */
         //測位開始ボタン
         final Button button_start = (Button)findViewById(R.id.btn_start);
+        button_start.setEnabled(true);
         //測位停止ボタン
         final Button button_stop = (Button)findViewById(R.id.btn_stop);
+        button_stop.setEnabled(false);
 
         //測位状態表示テキスト
         final TextView tv_state = (TextView)findViewById(R.id.tv_state);
@@ -98,6 +90,8 @@ public class MainActivity extends Activity{
          */
         final OpeniAreaHttpConnect mOpeniAreaHttpConnect = new OpeniAreaHttpConnect(this);
         final OpeniAreaLocation[] location = new OpeniAreaLocation[1];
+        final CellId cellId = new CellId();
+
         /*
         handler
         threadから応答が来たら結果を表示する
@@ -113,6 +107,13 @@ public class MainActivity extends Activity{
                     Intent i = new Intent(Intent.ACTION_VIEW, uri);
                     show_Toast("ログイン後、基地局測位を許可してください");
                     startActivity(i);
+                    button_start.setEnabled(true);
+                    button_stop.setEnabled(false);
+
+                    isPositioning=FALSE;
+                    tv_state.setText(R.string.txt_suspension);
+                    isLoop=FALSE;
+
                 } else {
                     tv_result_lat.setText(String.valueOf(location[0].getLatitude()));
                     tv_result_lng.setText(String.valueOf(location[0].getLongitude()));
@@ -122,8 +123,10 @@ public class MainActivity extends Activity{
                 //ログ出力
                 log_str = String.valueOf(String.valueOf(jtime.getjTime(location[0].getTime())) + ","
                         + location[0].getLatitude()) + ","
-                        + String.valueOf(location[0].getLongitude());
+                        + String.valueOf(location[0].getLongitude()
+                +"," + location[0].get_log_cellId());
                 myLog.addLog(log_str);
+
             }
         };
 
@@ -134,7 +137,10 @@ public class MainActivity extends Activity{
         button_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                myLog.initLog("測位日時,緯度,経度");
+                button_start.setEnabled(false);
+                button_stop.setEnabled(true);
+
+                myLog.initLog("time,latitude,longitude,CellID,PhysicalCellID");
                 isLoop = TRUE;
                 isPositioning = TRUE;
                 isFirst = TRUE;
@@ -152,13 +158,21 @@ public class MainActivity extends Activity{
                                     e.printStackTrace();
                                 }
                             }
+                            //OpeniArea測位開始
                             mOpeniAreaHttpConnect.connection();
+
+                            //CellID、物理CellIDの取得
+                            TelephonyManager telephonyManager;
+                            telephonyManager = (TelephonyManager)getSystemService(TELEPHONY_SERVICE);
+
+                            result_location = (OpeniAreaLocation) mOpeniAreaHttpConnect.getLocation();
+                            result_location.set_log_cellId(cellId.getAllCellId(telephonyManager));
                             Message msg = new Message();
                             msg.what = 99;
-                            msg.obj = mOpeniAreaHttpConnect.getLocation();
+                            //msg.obj = mOpeniAreaHttpConnect.getLocation();
+                            msg.obj = result_location;
                             handler.sendMessage(msg);
                             isFirst = FALSE;
-
                         }
                     }
                 }).start();
@@ -168,13 +182,13 @@ public class MainActivity extends Activity{
         button_stop.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                button_start.setEnabled(true);
+                button_stop.setEnabled(false);
+
                 isPositioning=FALSE;
                 tv_state.setText(R.string.txt_suspension);
                 show_Toast("測位終了");
                 isLoop=FALSE;
-                //ログ出力
-                log_str = String.valueOf(jtime.getjTime(location[0].getTime()) + "," + "正常終了");
-                myLog.addLog(log_str);
             }
         });
     }
